@@ -4,11 +4,11 @@ import threading
 import time
 
 import pygame
-import  random
+import random
 WIDTH = 1000
 HEIGHT = 600
 client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-client.connect(("2.tcp.eu.ngrok.io", 15132))
+client.connect(("4.tcp.eu.ngrok.io", 16761))
 
 player_id = client.recv(1024). decode()
 other_players_data = {}
@@ -70,14 +70,14 @@ window = pygame.display.set_mode([WIDTH, HEIGHT])
 
 clock = pygame.time.Clock()
 foods = [ ]
-for i in range(400):
+for i in range(500):
     food = Food(20,
                  random.randint(-2000, 2000),
                  random.randint(-2000, 2000),
                  [random.randint(0, 255),random.randint(0, 255),random.randint(0, 255)])
     foods.append(food)
     scale = 1
-andriy = Player(WIDTH/2, HEIGHT/2, 50, [0, 0, 0], 5, "любомир")
+andriy = Player(WIDTH/2, HEIGHT/2, 50, [0, 0, 0], 5, "Володя")
 last_send_time = 0
 while 1==1:
     for event in pygame.event.get():
@@ -92,7 +92,7 @@ while 1==1:
             andriy.size += 2
     window.fill([255, 255, 255])
     andriy.draw(window, scale)
-    window.blit(text, (0, 0))
+
     andriy.update()
     if time.time() - last_send_time > 0.1 :
         try:
@@ -104,18 +104,30 @@ while 1==1:
                 "name" : andriy.name,
                 "speed": andriy.speed
             })
-            client.send(players_data.encode())
+            client.send((players_data + "\n").encode())
         except Exception as e:
             print("Connection lost:", e)
             running = False
         pass
-
+    tops = [{'name':andriy.name, 'size': andriy.size }]
     for pid, pdata in other_players_data.items():
-        draw_x = int((pdata["x"] - andriy.x) * scale + WIDTH // 2 )
-        draw_y = int((pdata["y"] - andriy.y) * scale + HEIGHT // 2)
-        size = pdata["size"] * scale
-        pygame.draw.rect(window, pdata["color"], pygame.Rect(draw_x, draw_y, size, size))
+        if pdata['name'] != andriy.name:
+            draw_x = int((pdata["x"] - andriy.x) * scale + WIDTH // 2 )
+            draw_y = int((pdata["y"] - andriy.y) * scale + HEIGHT // 2)
+            size = pdata["size"] * scale
+            pygame.draw.rect(window, pdata["color"], pygame.Rect(draw_x, draw_y, size, size))
+            print(other_players_data)
+            tops.append({'name': pdata['name'], 'size': pdata["size"]})
 
+    y = 0
+    for player in tops:
+        player_text = pygame.font.Font(None, 20)\
+            .render(f"{player['name']}: {player['size']}", True, [0, 0, 0,])
+        window.blit(player_text, (0, y))
+        y += 20
+    for pid, pdata in other_players_data.items():
+        if pdata['name'] != andriy.name and pdata.get("die"):
+            exit()
 
     for food in foods:
         food.draw(window, andriy.x, andriy.y, scale)
